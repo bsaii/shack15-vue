@@ -119,13 +119,16 @@ const projects = [
     },
 ]
 
-const { data: activities } = await useAsyncData<Array<{ id: string; year: number; events_attended: number }>>("activities", () => $fetch('/activities', { baseURL: url }))
+const { data } = await useAsyncData('cart-discount', async () => {
+    const [activities, events, engagements, members] = await Promise.all([
+        $fetch<Array<{ id: string; year: number; events_attended: number }>>('/activities', { baseURL: url, cache: 'no-store' }),
+        $fetch<Array<{ id: string; name: string; event_date: string; attendance_count: number }>>('/events', { baseURL: url, cache: 'no-store' }),
+        $fetch<Array<{ id: string; messages_sent: number; messages_received: number; }>>("/engagements", { baseURL: url, cache: 'no-store' }),
+        $fetch<Array<{ id: string; name: string; email: string; joined_date: string; last_active_date: string; status: 'active' | 'inactive' }>>("/members", { baseURL: url, cache: 'no-store' })
+    ])
 
-const { data: events } = await useAsyncData<Array<{ id: string; name: string; event_date: string; attendance_count: number }>>("events", () => $fetch('/events', { baseURL: url }))
-
-const { data: engagements } = useAsyncData<Array<{ id: string; messages_sent: number; messages_received: number; }>>("engagements", () => $fetch("/engagements", { baseURL: url }))
-
-const { data: members } = useAsyncData<Array<{ id: string; name: string; email: string; joined_date: string; last_active_date: string; status: 'active' | 'inactive' }>>("members", () => $fetch("/members", { baseURL: url }))
+    return { activities, events, engagements, members }
+})
 
 </script>
 
@@ -327,13 +330,13 @@ const { data: members } = useAsyncData<Array<{ id: string; name: string; email: 
                 <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div class="grid auto-rows-min gap-4 md:grid-cols-3">
                         <div class="aspect-video rounded-xl bg-muted/50">
-                            <Card v-if="activities" class="flex flex-col">
+                            <Card v-if="data" class="flex flex-col">
                                 <CardHeader class="items-center pb-0">
                                     <CardTitle>Activities</CardTitle>
                                     <CardDescription>Events attended</CardDescription>
                                 </CardHeader>
                                 <CardContent class="flex-1 pb-0 ">
-                                    <DonutChart index="id" :category="'events_attended'" :data="activities"
+                                    <DonutChart index="id" :category="'events_attended'" :data="data.activities"
                                         class=" h-32 m-4" />
                                 </CardContent>
                                 <CardFooter class="flex-col gap-2 text-sm">
@@ -349,13 +352,13 @@ const { data: members } = useAsyncData<Array<{ id: string; name: string; email: 
                             <Skeleton v-else class="aspect-video rounded-xl bg-muted/50" />
                         </div>
                         <div class="aspect-video rounded-xl bg-muted/50">
-                            <Card v-if="engagements" class="flex flex-col">
+                            <Card v-if="data" class="flex flex-col">
                                 <CardHeader class="items-center pb-0">
                                     <CardTitle>Engagements</CardTitle>
                                     <CardDescription>Interactions on the platform</CardDescription>
                                 </CardHeader>
                                 <CardContent class="flex-1 pb-0">
-                                    <AreaChart class=" h-32 m-4" :data="engagements" index="id"
+                                    <AreaChart class=" h-32 m-4" :data="data.engagements" index="id"
                                         :categories="['messages_received', 'messages_sent']" :show-grid-line=false />
                                 </CardContent>
                                 <CardFooter class="flex-col gap-2 text-sm">
@@ -371,13 +374,13 @@ const { data: members } = useAsyncData<Array<{ id: string; name: string; email: 
                             <Skeleton v-else class="aspect-video rounded-xl bg-muted/50" />
                         </div>
                         <div class="aspect-video rounded-xl bg-muted/50">
-                            <Card v-if="events" class="flex flex-col">
+                            <Card v-if="data" class="flex flex-col">
                                 <CardHeader class="items-center pb-0">
                                     <CardTitle>Events</CardTitle>
                                     <CardDescription>All year events</CardDescription>
                                 </CardHeader>
                                 <CardContent class="flex-1 pb-0">
-                                    <LineChart class=" h-32 m-4" :data="events" index="id" :colors="['green']"
+                                    <LineChart class=" h-32 m-4" :data="data.events" index="id" :colors="['green']"
                                         :show-grid-line=false :categories="['attendance_count']" :y-formatter="(tick, i) => {
                                             return typeof tick === 'number'
                                                 ? `$ ${new Intl.NumberFormat('us').format(tick).toString()}`
@@ -415,8 +418,8 @@ const { data: members } = useAsyncData<Array<{ id: string; name: string; email: 
                                     </TableHead>
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
-                                <TableRow v-for="member in members" :key="member.id">
+                            <TableBody v-if="data">
+                                <TableRow v-for="member in data.members" :key="member.id">
                                     <TableCell class="font-medium">
                                         {{ member.status }}
                                     </TableCell>
